@@ -1,49 +1,54 @@
-const express = require('express')
+const express = require('express');
 const app = express();
 require('dotenv').config();
-const main =  require('./config/db')
-const cookieParser =  require('cookie-parser');
+const main = require('./config/db');
+const cookieParser = require('cookie-parser');
 const authRouter = require("./routes/userAuth");
-const redisClient = require('./config/redis');
+const redisClient = require('./config/redis'); // Your redis client
 const problemRouter = require("./routes/problemCreator");
-const submitRouter = require("./routes/submit")
-const aiRouter = require("./routes/aiChatting")
+const submitRouter = require("./routes/submit");
+const aiRouter = require("./routes/aiChatting");
 const videoRouter = require("./routes/videoCreator");
-const cors = require('cors')
-
-// console.log("Hello")
+const cors = require('cors');
 
 app.use(cors({
     origin: 'http://localhost:5173',
-    credentials: true 
-}))
+    credentials: true
+}));
 
 app.use(express.json());
 app.use(cookieParser());
 
-app.use('/user',authRouter);
-app.use('/problem',problemRouter);
-app.use('/submission',submitRouter);
-app.use('/ai',aiRouter);
-app.use("/video",videoRouter);
+app.use('/user', authRouter);
+app.use('/problem', problemRouter);
+app.use('/submission', submitRouter);
+app.use('/ai', aiRouter);
+app.use("/video", videoRouter);
 
+const InitalizeConnection = async () => {
+    try {
+        // Add listeners BEFORE trying to connect
+        redisClient.on('connect', () => {
+            console.log('✅ Successfully connected to Redis!');
+        });
 
-const InitalizeConnection = async ()=>{
-    try{
+        redisClient.on('error', (err) => {
+            console.error('❌ Could not connect to Redis. Error:', err);
+        });
 
-        await Promise.all([main(),redisClient.connect()]);
-        console.log("DB Connected");
+        // Connect to MongoDB and Redis
+        await Promise.all([main(), redisClient.connect()]);
         
-        app.listen(process.env.PORT, ()=>{
-            console.log("Server listening at port number: "+ process.env.PORT);
-        })
+        console.log("All databases connected.");
 
-    }
-    catch(err){
-        console.log("Error: "+err);
+        app.listen(process.env.PORT, () => {
+            console.log("Server listening at port number: " + process.env.PORT);
+        });
+
+    } catch (err) {
+        // This will now catch errors from MongoDB or other setup issues
+        console.log("Failed to initialize server. Error: " + err);
     }
 }
 
-
 InitalizeConnection();
-

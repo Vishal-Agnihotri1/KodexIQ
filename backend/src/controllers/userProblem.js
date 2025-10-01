@@ -235,25 +235,28 @@ const solvedAllProblembyUser =  async(req,res)=>{
 }
 
 const submittedProblem = async(req,res)=>{
-
   try{
-     
     const userId = req.result._id;
     const problemId = req.params.pid;
 
-   const ans = await Submission.find({userId,problemId});
-  
-  if(ans.length==0)
-    res.status(200).send("No Submission is persent");
+    const submissions = await Submission.find({ userId, problemId }).sort({ createdAt: -1 });
+ 
+    // This check now correctly stops the function if no submissions are found
+    if(submissions.length === 0) {
+      return res.status(200).json({
+        message: "No submissions found for this problem.",
+        submissions: [] 
+      });
+    }
 
-  res.status(200).send(ans);
-
+    // This part is only reached if submissions were found
+    res.status(200).json({ submissions });
   }
   catch(err){
-     res.status(500).send("Internal Server Error");
+    console.error("Error in submittedProblem:", err); // Good practice to log the error
+    res.status(500).send("Internal Server Error");
   }
 }
-
 
 
 module.exports = {createProblem,updateProblem,deleteProblem,getProblemById,getAllProblem,solvedAllProblembyUser,submittedProblem};

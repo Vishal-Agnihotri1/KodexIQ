@@ -6,38 +6,51 @@ const jwt = require('jsonwebtoken');
 const Submission = require("../models/submission")
 
 
-const register = async (req,res)=>{
-    
-    try{
-        // validate the data;
+const register = async (req, res) => {
+    try {
+        validate(req.body);
+        const { firstName, emailId, password } = req.body;
 
-      validate(req.body); 
-      const {firstName, emailId, password}  = req.body;
+        // === FIX STARTS HERE ===
+        // 1. Check if the user already exists
+        const existingUser = await User.findOne({ emailId: emailId });
 
-      req.body.password = await bcrypt.hash(password, 10);
-      req.body.role = 'user'
-    //
-    
-     const user =  await User.create(req.body);
-     const token =  jwt.sign({_id:user._id , emailId:emailId, role:'user'},process.env.JWT_KEY,{expiresIn: 60*60});
-     const reply = {
-        firstName: user.firstName,
-        emailId: user.emailId,
-        _id: user._id,
-        role:user.role,
-    }
-    
-     res.cookie('token',token,{maxAge: 60*60*1000});
-     res.status(201).json({
-        user:reply,
-        message:"Loggin Successfully"
-    })
-    }
-    catch(err){
-        res.status(400).send("Error: "+err);
+        if (existingUser) {
+            // 2. If user exists, send a clear error message
+            return res.status(400).json({ message: "User with this email already exists." });
+        }
+        // === FIX ENDS HERE ===
+
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        const user = await User.create({
+            firstName,
+            emailId,
+            password: hashedPassword,
+            role: 'user'
+        });
+
+        const token = jwt.sign({ _id: user._id, emailId: emailId, role: 'user' }, process.env.JWT_KEY, { expiresIn: 60 * 60 });
+
+        const reply = {
+            firstName: user.firstName,
+            emailId: user.emailId,
+            _id: user._id,
+            role: user.role,
+        }
+
+        res.cookie('token', token, { maxAge: 60 * 60 * 1000, httpOnly: true }); // Added httpOnly for security
+        res.status(201).json({
+            user: reply,
+            message: "User registered successfully"
+        });
+
+    } catch (err) {
+        // Pro-tip: Log the actual error on the server for better debugging
+        console.error("Registration Error:", err); 
+        res.status(400).json({ message: "An error occurred during registration." });
     }
 }
-
 
 const login = async (req,res)=>{
 
