@@ -10,7 +10,7 @@ node_modules/
 *.log
 
 # Build folders
-dist/
+backend/dist/
 build/
 
 # System files
